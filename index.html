@@ -1133,11 +1133,9 @@
                     <label for="employeePosition">Position</label>
                     <select id="employeePosition" required>
                         <option value="">Select Position</option>
-                        <option value="Sales Associate">Sales Associate</option>
-                        <option value="Senior Sales Rep">Senior Sales Rep</option>
-                        <option value="Sales Manager">Sales Manager</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Installer">Installer</option>
                         <option value="Branch Manager">Branch Manager</option>
-                        <option value="Inventory Manager">Inventory Manager</option>
                         <option value="Cashier">Cashier</option>
                         <option value="Customer Service">Customer Service</option>
                     </select>
@@ -1345,10 +1343,10 @@
         const branches = [
             {
                 id: 1,
-                name: "Downtown Branch",
-                address: "123 Main St, New York, NY",
-                phone: "(212) 555-1234",
-                manager: "Sarah Johnson",
+                name: "Branch A",
+                address: "123 Kulai, IndahPura, JB",
+                phone: "012-345 6789",
+                manager: "Mia Sara",
                 status: "open",
                 totalItems: 0,
                 lowStockItems: 0,
@@ -1356,10 +1354,10 @@
             },
             {
                 id: 2,
-                name: "Westside Branch",
-                address: "456 Oak Ave, Los Angeles, CA",
-                phone: "(310) 555-5678",
-                manager: "Michael Chen",
+                name: "Branch B",
+                address: "123 Kulai, IndahPura, JB",
+                phone: "012-345 6789",
+                manager: "Mat Anas",
                 status: "open",
                 totalItems: 0,
                 lowStockItems: 0,
@@ -1367,10 +1365,10 @@
             },
             {
                 id: 3,
-                name: "Uptown Branch",
-                address: "789 Pine Rd, Chicago, IL",
-                phone: "(312) 555-9012",
-                manager: "Robert Davis",
+                name: "Branch C",
+                address: "123 Kulai, IndahPura, JB",
+                phone: "012-345 6789",
+                manager: "Hisyam Hamzaini",
                 status: "open",
                 totalItems: 0,
                 lowStockItems: 0,
@@ -1378,10 +1376,10 @@
             },
             {
                 id: 4,
-                name: "Southside Branch",
-                address: "321 Elm St, Houston, TX",
-                phone: "(713) 555-3456",
-                manager: "Maria Garcia",
+                name: "Branch D",
+                address: "123 Kulai, IndahPura, JB",
+                phone: "012-345 6789",
+                manager: "Wahyuna Musa",
                 status: "closed",
                 totalItems: 0,
                 lowStockItems: 0,
@@ -1517,6 +1515,55 @@
             }
         }
 
+        // Calculate branch statistics
+        function calculateBranchStats(branchId) {
+            const branchInventory = inventoryData[branchId] || [];
+            
+            // Calculate total items
+            const totalItems = branchInventory.length;
+            
+            // Calculate low stock items (stock <= 10)
+            const lowStockItems = branchInventory.filter(item => item.stock <= 10).length;
+            
+            // Calculate inventory value
+            const inventoryValue = branchInventory.reduce((total, item) => {
+                return total + (item.stock * item.price);
+            }, 0);
+            
+            return { totalItems, lowStockItems, inventoryValue };
+        }
+
+        // Update branch statistics in the branches array
+        function updateBranchStats(branchId) {
+            const branch = branches.find(b => b.id === branchId);
+            if (!branch) return;
+            
+            const stats = calculateBranchStats(branchId);
+            branch.totalItems = stats.totalItems;
+            branch.lowStockItems = stats.lowStockItems;
+            branch.inventoryValue = stats.inventoryValue;
+            
+            // Update branch card in the main view if it exists
+            updateBranchCard(branchId);
+        }
+
+        // Update a specific branch card in the main view
+        function updateBranchCard(branchId) {
+            const branchCard = document.querySelector(`.branch-card[data-branch-id="${branchId}"]`);
+            if (!branchCard) return;
+            
+            const branch = branches.find(b => b.id === branchId);
+            if (!branch) return;
+            
+            // Update the stats in the branch card
+            const statValues = branchCard.querySelectorAll('.stat-value');
+            if (statValues.length >= 3) {
+                statValues[0].textContent = branch.totalItems.toLocaleString();
+                statValues[1].textContent = branch.lowStockItems;
+                statValues[2].textContent = `$${branch.inventoryValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            }
+        }
+
         // Calculate top salespeople based on actual sales history
         function calculateTopSalespeople(branchId) {
             const branchEmployeeSales = employeeSales[branchId] || {};
@@ -1631,7 +1678,7 @@
                             <div class="stat-label">Low Stock</div>
                         </div>
                         <div class="stat">
-                            <div class="stat-value">$${branch.inventoryValue.toLocaleString()}</div>
+                            <div class="stat-value">$${branch.inventoryValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                             <div class="stat-label">Inventory Value</div>
                         </div>
                     </div>
@@ -2287,14 +2334,7 @@
             inventoryData[currentBranchId].push(newItem);
             
             // Update branch stats
-            const branch = branches.find(b => b.id === currentBranchId);
-            if (branch) {
-                branch.totalItems += 1;
-                if (initialStock <= 10) {
-                    branch.lowStockItems += 1;
-                }
-                branch.inventoryValue += (initialStock * pricePerUnit);
-            }
+            updateBranchStats(currentBranchId);
             
             // Re-render inventory table
             renderInventoryTable(currentBranchId);
@@ -2369,18 +2409,8 @@
                 
                 branchInventory[productIndex].stock += quantity;
                 
-                // Update branch inventory value
-                const branch = branches.find(b => b.id === currentBranchId);
-                if (branch) {
-                    branch.inventoryValue += (quantity * price);
-                    
-                    // Update low stock count if applicable
-                    if (oldStock <= 10 && branchInventory[productIndex].stock > 10) {
-                        branch.lowStockItems -= 1;
-                    } else if (oldStock > 10 && branchInventory[productIndex].stock <= 10) {
-                        branch.lowStockItems += 1;
-                    }
-                }
+                // Update branch stats
+                updateBranchStats(currentBranchId);
                 
                 // Re-render inventory table
                 renderInventoryTable(currentBranchId);
@@ -2424,22 +2454,12 @@
                 }
                 
                 const oldStock = branchInventory[productIndex].stock;
-                const originalPrice = branchInventory[productIndex].price;
                 
                 // Update stock
                 branchInventory[productIndex].stock -= quantity;
                 
                 // Update branch stats
-                const branch = branches.find(b => b.id === currentBranchId);
-                if (branch) {
-                    // Update low stock count if applicable
-                    if (oldStock > 10 && branchInventory[productIndex].stock <= 10) {
-                        branch.lowStockItems += 1;
-                    }
-                    
-                    // Update inventory value (reduce by original cost price)
-                    branch.inventoryValue -= (quantity * originalPrice);
-                }
+                updateBranchStats(currentBranchId);
                 
                 // Update employee sales tracking
                 if (!employeeSales[currentBranchId]) {
@@ -2523,14 +2543,6 @@
             const productIndex = branchInventory.findIndex(item => item.id === currentProductId);
             
             if (productIndex !== -1) {
-                const oldStock = branchInventory[productIndex].stock;
-                const oldPrice = branchInventory[productIndex].price;
-                
-                // Calculate inventory value change
-                const oldValue = oldStock * oldPrice;
-                const newValue = newStock * newPrice;
-                const valueChange = newValue - oldValue;
-                
                 // Update the product
                 branchInventory[productIndex].id = newProductId;
                 branchInventory[productIndex].name = newProductName;
@@ -2538,18 +2550,8 @@
                 branchInventory[productIndex].price = newPrice;
                 branchInventory[productIndex].stock = newStock;
                 
-                // Update branch inventory value and low stock count
-                const branch = branches.find(b => b.id === currentBranchId);
-                if (branch) {
-                    branch.inventoryValue += valueChange;
-                    
-                    // Update low stock count
-                    if (oldStock > 10 && newStock <= 10) {
-                        branch.lowStockItems += 1;
-                    } else if (oldStock <= 10 && newStock > 10) {
-                        branch.lowStockItems -= 1;
-                    }
-                }
+                // Update branch stats
+                updateBranchStats(currentBranchId);
                 
                 // Re-render inventory table
                 renderInventoryTable(currentBranchId);
@@ -2567,20 +2569,10 @@
             const productIndex = branchInventory.findIndex(item => item.id === productId);
             
             if (productIndex !== -1) {
-                const product = branchInventory[productIndex];
-                const productValue = product.stock * product.price;
-                
                 branchInventory.splice(productIndex, 1);
                 
                 // Update branch stats
-                const branch = branches.find(b => b.id === currentBranchId);
-                if (branch) {
-                    branch.totalItems -= 1;
-                    branch.inventoryValue -= productValue;
-                    if (product.stock <= 10) {
-                        branch.lowStockItems -= 1;
-                    }
-                }
+                updateBranchStats(currentBranchId);
                 
                 // Re-render inventory table
                 renderInventoryTable(currentBranchId);
